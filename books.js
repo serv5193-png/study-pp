@@ -1,0 +1,14 @@
+/* مذاكرتي — المكتبة (محلياً وعلى السحابة) */
+async function cbList(){const r=await fetch(ghU('books'),{headers:ghH()});if(r.status==404)return[];if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}
+R.books=async()=>{const c=!!GH();$('#v').innerHTML=`<h2>مكتبتي</h2><div class="card"><p class="m">تُحفَظ الملفات على جهازك${c?'، ويمكن رفعها إلى مستودعك الخاص لمزامنتها مع أجهزتك الأخرى':''}.</p><input type="file" id="bf" accept=".pdf,.epub,.txt,image/*" multiple onchange="addB(this.files)"></div><div id="bl"></div>`;
+const l=await bk('all');let cl=[];if(c)try{cl=await cbList()}catch(e){toast('تعذّرت قراءة السحابة')}
+const names=new Set(l.map(b=>b.n)),cn=new Map(cl.map(x=>[x.name,x]));
+const rows=l.map(b=>{const x=cn.get(b.n);return `<div class="card row"><span style="flex:1">📄 ${esc(b.n)} <span class="m">${(b.f.size/1048576).toFixed(1)}MB ${x?'• ☁️':''}</span></span><button onclick="ob(${b.id})">فتح</button>${c&&!x?`<button class="s" onclick="upB(${b.id})">رفع ☁️</button>`:''}<button class="r" onclick="bk('del',${b.id}).then(R.books)">✕</button></div>`});
+cl.filter(x=>!names.has(x.name)).forEach(x=>rows.push(`<div class="card row"><span style="flex:1">☁️ ${esc(x.name)} <span class="m">${(x.size/1048576).toFixed(1)}MB • في السحابة فقط</span></span><button data-n="${esc(x.name)}" onclick="dnB(this.dataset.n)">تنزيل</button><button class="r" data-n="${esc(x.name)}" data-s="${x.sha}" onclick="dlB(this.dataset.n,this.dataset.s)">✕</button></div>`));
+$('#bl').innerHTML=rows.join('')||'<p class="m">لا توجد كتب بعد.</p>'};
+async function addB(f){for(const x of f)await bk('put',{n:x.name,f:x});navigator.storage?.persist?.();R.books()}
+async function ob(id){const b=await bk('get',id);window.open(URL.createObjectURL(b.f),'_blank')}
+async function upB(id){try{const b=await bk('get',id);if(b.f.size>50*1048576&&!confirm('حجم الملف أكبر من 50 ميجا وقد يفشل الرفع. هل تريد المتابعة؟'))return;toast('⏳ جارٍ الرفع...');
+const d=await new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result.split(',')[1]);f.readAsDataURL(b.f)}),p='books/'+encodeURIComponent(b.n),ex=await ghGet(p);await ghPut(p,d,ex&&ex.sha,'book '+b.n);toast('✅ تم الرفع');R.books()}catch(e){toast('تعذّر الرفع: '+e.message)}}
+async function dnB(n){try{toast('⏳ جارٍ التنزيل...');const r=await fetch(ghU('books/'+encodeURIComponent(n)),{headers:ghH(true)});if(!r.ok)throw new Error('HTTP '+r.status);await bk('put',{n,f:new File([await r.blob()],n)});toast('✅ تم التنزيل');R.books()}catch(e){toast('تعذّر التنزيل: '+e.message)}}
+async function dlB(n,sha){if(!confirm('حذف الملف من السحابة نهائياً؟'))return;try{await fetch(ghU('books/'+encodeURIComponent(n)),{method:'DELETE',headers:{...ghH(),'Content-Type':'application/json'},body:JSON.stringify({message:'delete '+n,sha})});R.books()}catch(e){toast('تعذّر الحذف')}}
